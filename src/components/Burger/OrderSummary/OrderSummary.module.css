@@ -1,0 +1,11 @@
+li{
+    text-align: left !important;
+    font-weight:600;
+    text-transform: capitalize;
+}
+
+.OrderSummaryp{
+    text-align: left !important;
+    font-weight:600;
+    text-transform: capitalize;
+}
