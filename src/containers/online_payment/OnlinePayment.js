@@ -5,6 +5,8 @@ import BuildControls from '../../components/Burger/BuildControls/BuildControls';
 import Modal from '../../components/UI/Modal/Modal';
 import OrderSummary from '../../components/Burger/OrderSummary/OrderSummary';
 import axios from '../../axios-orders';
+import Spinner from '../../components/UI/Spinner/Spinner';
+import withErrorHandler from '../../hoc/withErrorHandler/withErrorHandler';
 
 const INGREDIENT_PRICES = {
 
@@ -19,17 +21,27 @@ class OnlinePayment extends Component {
 
      state = {
 
-        'ingredients' : {
-
-            'salad' : 0,
-            'bacon' : 0,
-            'cheese' : 0,
-            'meat' : 0
-        },
-
+        // 'ingredients' : {
+        //     'salad' : 0,
+        //     'bacon' : 0,
+        //     'cheese' : 0,
+        //     'meat' : 0
+        // },
+        ingredients : null,
         totalPrice : 4,
         purchasable : false,
-        purchasing : false
+        purchasing : false,
+        loading:false,
+        error:null
+     }
+
+     componentDidMount() {
+        axios.get('/ingredients.json').then(
+            response => this.setState({ingredients: response.data})
+            //response => this.setState
+        ).catch(
+            error => this.setState({error: true})
+        )
      }
 
      updatePurchaseState(ingredients) {
@@ -83,6 +95,7 @@ class OnlinePayment extends Component {
      }
 
      purchaseContinueHandler = () => {
+        this.setState({loading:true})
         const order = {
             ingredients : this.state.ingredients,
             price : this.state.totalPrice,
@@ -98,8 +111,10 @@ class OnlinePayment extends Component {
             deliveryMethod: 'fastest'
         }
         axios.post('/orders.json',order)
-        .then(response => console.log(response))
-        .catch(error => console.log(error));
+        .then(response => this.setState({loading:true , purchasing:false})
+            /*console.log(response)*/)
+        .catch(error => this.setState({loading:true , purchasing : false})
+            /*console.log(error)*/);
      }
 
 
@@ -108,25 +123,39 @@ class OnlinePayment extends Component {
         for(let key in disabledInfo) {
             disabledInfo[key] = disabledInfo[key] <= 0
         }
+        let orderSummary = null;
+        let burger = this.state.error ? <h3>Ingredients Can't be loaded</h3> : <Spinner />;
+        if (this.state.ingredients) {
+            burger = (
+                <Aux>
+              <Burger ingredients={this.state.ingredients}/>
+              <BuildControls ingredientAdded = {this.addIngredientHandler}
+              ingredientRemoved = {this.removeIngredientHandler}
+              disabled={disabledInfo}
+              purchasable={this.state.purchasable}
+              price={this.state.totalPrice}
+              ordered={this.purchaseHandler}
+              />
+              </Aux>
+            );
+
+            orderSummary = <OrderSummary ingredients={this.state.ingredients}
+            purchaseCancelled={this.purchaseCancelHandler}
+            purchaseContinued={this.purchaseContinueHandler}
+            price={this.state.totalPrice}
+            />
+            if (this.state.loading) {
+                orderSummary = <Spinner />
+            }
+        }
 
         return(
 
           <Aux>
             <Modal show={this.state.purchasing} modalClosed={this.purchaseCancelHandler}>
-                <OrderSummary ingredients={this.state.ingredients}
-                purchaseCancelled={this.purchaseCancelHandler}
-                purchaseContinued={this.purchaseContinueHandler}
-                price={this.state.totalPrice}
-                />
+            {orderSummary}
             </Modal>
-        <Burger ingredients={this.state.ingredients}/>
-          <BuildControls ingredientAdded = {this.addIngredientHandler}
-          ingredientRemoved = {this.removeIngredientHandler}
-          disabled={disabledInfo}
-          purchasable={this.state.purchasable}
-          price={this.state.totalPrice}
-          ordered={this.purchaseHandler}
-          />
+            {burger}
 
           </Aux>
         );
@@ -134,4 +163,4 @@ class OnlinePayment extends Component {
 
 }
 
-export default OnlinePayment;
+export default withErrorHandler(OnlinePayment,axios);
